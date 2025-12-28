@@ -21,7 +21,7 @@ use std::collections::HashMap;
 /// ```
 /// Symbols are split by white space, unless there is a delimiter between them.
 /// Currently only "" are a recognized delimiter.
-enum Token {
+pub enum Token {
     Vector(Vec<Token>),
     Symbol(String),
 }
@@ -64,7 +64,7 @@ unsafe fn push_token(
 }
 
 /// Convert string into ast of tokens.
-fn tokenizer(ast_text: &str) -> Token {
+pub fn tokenizer(ast_text: &str) -> Token {
     let mut root = Token::Vector(vec![Token::Symbol("do".to_string())]);
     let mut stack = Vec::new();
     let mut cur_symbol = "".to_string();
@@ -132,7 +132,7 @@ fn tokenizer(ast_text: &str) -> Token {
 #[derive(Debug, Clone)]
 /// # DLisp Types
 /// These are the types that a symbol can be
-enum LType {
+pub enum LType {
     Number(f64),
     String(String),
     Fun(Fun),
@@ -151,7 +151,7 @@ enum LType {
 /// ```
 ///
 /// TODO add docstrings attached to functions
-enum Fun {
+pub enum Fun {
     Native(fn(Vec<LType>, &mut HashMap<String, LType>) -> LType),
     Lisp(Token),
 }
@@ -174,7 +174,7 @@ fn eval_args(root: LType, symbols: &mut HashMap<String, LType>) -> LType {
 ///
 /// TODO refactor the rust functions from lambdas -> regular functions
 /// TODO convert rust functions into macros if they need to supress evaluation? instead of forcing every rust function to evaluate its args manually
-fn stdlib() -> HashMap<String, LType> {
+pub fn stdlib() -> HashMap<String, LType> {
     let mut stdlib = HashMap::new();
     stdlib.insert(
         "print".to_string(),
@@ -389,7 +389,7 @@ fn stdlib() -> HashMap<String, LType> {
 /// Evaluate ast
 /// root must be a Token::Vector or else it will panic
 /// You cannot evaluate a symbol
-fn eval_ast(root: &Token, symbols: &mut HashMap<String, LType>) -> LType {
+pub fn eval_ast(root: &Token, symbols: &mut HashMap<String, LType>) -> LType {
     let tks = match root {
         Token::Vector(tks) => tks,
         _ => panic!("process ast expects root to be vector"),
@@ -465,43 +465,4 @@ fn eval_ast(root: &Token, symbols: &mut HashMap<String, LType>) -> LType {
     };
 
     return result;
-}
-
-fn main() {
-    // let tokens = tokenizer("(print 'hi gaming')");
-    // let mut heap = stdlib();
-    // eval_ast(&tokens, &mut heap);
-
-    let _tokens = tokenizer(
-        "
-(defn p (a) (print a))
-(p \"b\")
-(p (- 10 1))
-(defn sub (a) (- a 10))
-(p (sub 11))
-(if 0 2 3)
-",
-    );
-
-    let _tokens = tokenizer(
-        "
-(defn p (a) (print a))
-(defn fib (n)
-  (if (= n 1) 0
-    (if (= n 2) 1
-      (+ (fib (- n 1)) (fib (- n 2))))))
-(p (fib 1))
-(p (fib 2))
-(p (fib 3))
-(p (fib 4))
-(p (fib 5))
-(p (fib 6))
-(p (fib 7))
-(p (fib 8))
-(p (fib 9))
-(p (fib 10))
-",
-    );
-    let mut heap = stdlib();
-    println!("{:?}", eval_ast(&_tokens, &mut heap));
 }
