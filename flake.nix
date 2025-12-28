@@ -27,6 +27,7 @@
               "clippy"
               "rust-src"
               "rust-analyzer"
+              "miri"
             ])
           ];
       in
