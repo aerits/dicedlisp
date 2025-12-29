@@ -2,14 +2,13 @@ extern crate dlisp;
 fn main() {
     let tokens = dlisp::tokenizer(
         "
-(defn loop (i f)
+(defn loop (i func)
    (if (= i 0)
        0
        (do
-         (f)
-         (bash sleep 0.1)
+         (func)
          (loop (+ i 1)))))
-(loop 1 (fn () (sh echo a)))
+(loop 1 (fn () (sh echo i)))
 ",
     );
     println!("{:?}", dlisp::eval_ast(&tokens, &mut dlisp::stdlib()));

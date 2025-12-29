@@ -378,7 +378,7 @@ pub fn stdlib() -> HashMap<String, LType> {
         })),
     );
     stdlib.insert(
-        "sh ".to_string(),
+        "sh".to_string(),
         LType::Fun(Fun::Native(|v, s| {
             assert!(v.len() >= 2);
             let command_name = match &v[1] {
