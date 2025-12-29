@@ -169,7 +169,9 @@ fn eval_args(root: LType, symbols: &mut HashMap<String, LType>) -> LType {
 }
 
 /// Creates a symbol list for evaluating an ast
+///
 /// This defines multiple rust functions to be called in lisp
+///
 /// and multiple lisp functions
 ///
 /// TODO refactor the rust functions from lambdas -> regular functions
@@ -386,9 +388,12 @@ pub fn stdlib() -> HashMap<String, LType> {
     return stdlib;
 }
 
-/// Evaluate ast
+/// # Evaluate ast
 /// root must be a Token::Vector or else it will panic
+///
 /// You cannot evaluate a symbol
+///
+/// get `symbols` from `dlisp::stdlib()`
 pub fn eval_ast(root: &Token, symbols: &mut HashMap<String, LType>) -> LType {
     let tks = match root {
         Token::Vector(tks) => tks,
