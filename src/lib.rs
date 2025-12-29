@@ -365,6 +365,9 @@ pub fn stdlib() -> HashMap<String, LType> {
                         Err(ref e) => match e {
                             EvaluationError::SymbolNotRecognized(s, origin) => {
                                 if s == "recur" {
+                                    if has_recur {
+                                        panic!("should not have more than 1 recur in a loop")
+                                    }
                                     has_recur = true;
                                     new_recur = match origin {
                                         Token::Vector(x) => x.clone(),
