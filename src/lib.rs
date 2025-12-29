@@ -315,8 +315,8 @@ pub fn stdlib() -> HashMap<String, LType> {
         LType::Fun(Fun::Native(|v, s| {
             let v = v
                 .iter()
-                .map(|x| eval_args(x.clone(), s).unwrap())
-                .collect::<Vec<_>>();
+                .map(|x| eval_args(x.clone(), s))
+                .collect::<Result<Vec<_>, _>>()?;
             return Ok(v.last().unwrap().clone());
         })),
     );

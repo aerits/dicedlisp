@@ -8,16 +8,13 @@ fn main() {
       (+ (fib (- n 1)) (fib (- n 2))))))
 
 (comment This is an example of a comment
-         Below is a recursive loop that runs until 21
-         TODO: replace with the loop function from stdlib)
-(defn loop (i f)
+         Below is a recursive loop that runs until 21)
+(loop (i 1
+       fun (fn (i) (fib i) ))
    (if (= i 21) 0
        (do
-         (print 'fib: ' i (f))
-         (loop (+ i 1) f))))
-
-(p (fib 1))
-(loop 2 (fn () (fib i)))
+         (print 'fib: ' i (fun i))
+         (recur (+ i 1) fun))))
 ",
     );
     let mut heap = dlisp::stdlib();
