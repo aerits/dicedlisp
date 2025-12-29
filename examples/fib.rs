@@ -1,4 +1,3 @@
-extern crate dlisp;
 fn main() {
     let _tokens = dlisp::tokenizer(
         "
@@ -7,16 +6,18 @@ fn main() {
   (if (= n 1) 0
     (if (= n 2) 1
       (+ (fib (- n 1)) (fib (- n 2))))))
+
+(comment This is an example of a comment
+         Below is a recursive loop that runs until 21
+         TODO: replace with the loop function from stdlib)
+(defn loop (i f)
+   (if (= i 21) 0
+       (do
+         (print 'fib: ' i (f))
+         (loop (+ i 1) f))))
+
 (p (fib 1))
-(p (fib 2))
-(p (fib 3))
-(p (fib 4))
-(p (fib 5))
-(p (fib 6))
-(p (fib 7))
-(p (fib 8))
-(p (fib 9))
-(p (fib 10))
+(loop 2 (fn () (fib i)))
 ",
     );
     let mut heap = dlisp::stdlib();

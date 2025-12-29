@@ -1,4 +1,5 @@
 use std::collections::HashMap;
+use thiserror::Error;
 
 #[derive(Debug, Clone)]
 /// # Token
@@ -152,19 +153,19 @@ pub enum LType {
 ///
 /// TODO add docstrings attached to functions
 pub enum Fun {
-    Native(fn(Vec<LType>, &mut HashMap<String, LType>) -> LType),
+    Native(fn(Vec<LType>, &mut HashMap<String, LType>) -> Result<LType, EvaluationError>),
     Lisp(Token),
 }
 
-fn eval_args(root: LType, symbols: &mut HashMap<String, LType>) -> LType {
+fn eval_args(root: LType, symbols: &mut HashMap<String, LType>) -> Result<LType, EvaluationError> {
     let root = match root {
         LType::Token(token) => token,
-        LType::String(s) => return symbols.get(&s).unwrap_or(&LType::String(s)).clone(),
-        _ => return root,
+        LType::String(s) => return Ok(symbols.get(&s).unwrap_or(&LType::String(s)).clone()),
+        _ => return Ok(root),
     };
     match root {
         Token::Vector(_) => return eval_ast(&root, symbols),
-        Token::Symbol(x) => return symbols.get(&x).unwrap_or(&LType::String(x)).clone(),
+        Token::Symbol(x) => return Ok(symbols.get(&x).unwrap_or(&LType::String(x)).clone()),
     }
 }
 
@@ -183,10 +184,10 @@ pub fn stdlib() -> HashMap<String, LType> {
         LType::Fun(Fun::Native(|v, s| {
             let v = v
                 .iter()
-                .map(|x| eval_args(x.clone(), s))
+                .map(|x| eval_args(x.clone(), s).unwrap())
                 .collect::<Vec<_>>();
             println!("{:?}", &v[1..v.len()]);
-            return LType::Nil;
+            return Ok(LType::Nil);
         })),
     );
     stdlib.insert(
@@ -194,7 +195,7 @@ pub fn stdlib() -> HashMap<String, LType> {
         LType::Fun(Fun::Native(|v, s| {
             let v = v
                 .iter()
-                .map(|x| eval_args(x.clone(), s))
+                .map(|x| eval_args(x.clone(), s).unwrap())
                 .collect::<Vec<_>>();
             let args = v[1..v.len()].iter().map(|x| match x {
                 LType::Number(x) => Some(*x),
@@ -206,7 +207,7 @@ pub fn stdlib() -> HashMap<String, LType> {
                 _ => None,
             });
             if args.clone().filter(|x| x.is_none()).count() > 0 {
-                return LType::Nil;
+                return Ok(LType::Nil);
             }
             let mut result = 1;
             let mut first = None;
@@ -226,7 +227,7 @@ pub fn stdlib() -> HashMap<String, LType> {
             if args_len == result {
                 out = 1.0;
             }
-            return LType::Number(out);
+            return Ok(LType::Number(out));
         })),
     );
     stdlib.insert(
@@ -234,7 +235,7 @@ pub fn stdlib() -> HashMap<String, LType> {
         LType::Fun(Fun::Native(|v, s| {
             let v = v
                 .iter()
-                .map(|x| eval_args(x.clone(), s))
+                .map(|x| eval_args(x.clone(), s).unwrap())
                 .collect::<Vec<_>>();
             let v = &v[1..v.len()];
             let args = v.iter().map(|x| match x {
@@ -247,10 +248,10 @@ pub fn stdlib() -> HashMap<String, LType> {
                 _ => None,
             });
             if args.clone().filter(|x| x.is_none()).count() > 0 {
-                return LType::Nil;
+                return Ok(LType::Nil);
             }
             let result = args.map(|x| x.unwrap()).sum::<f64>();
-            return LType::Number(result);
+            return Ok(LType::Number(result));
         })),
     );
     stdlib.insert(
@@ -259,7 +260,7 @@ pub fn stdlib() -> HashMap<String, LType> {
             // copied from +
             let v = v
                 .iter()
-                .map(|x| eval_args(x.clone(), s))
+                .map(|x| eval_args(x.clone(), s).unwrap())
                 .collect::<Vec<_>>();
             let v = &v[1..v.len()];
             let args = v.iter().map(|x| match x {
@@ -272,10 +273,10 @@ pub fn stdlib() -> HashMap<String, LType> {
                 _ => None,
             });
             if args.clone().filter(|x| x.is_none()).count() > 0 {
-                return LType::Nil;
+                return Ok(LType::Nil);
             }
             let result = args.map(|x| x.unwrap()).reduce(|acc, e| acc * e).unwrap();
-            return LType::Number(result);
+            return Ok(LType::Number(result));
         })),
     );
     stdlib.insert(
@@ -284,7 +285,7 @@ pub fn stdlib() -> HashMap<String, LType> {
             // copied from +
             let v = v
                 .iter()
-                .map(|x| eval_args(x.clone(), s))
+                .map(|x| eval_args(x.clone(), s).unwrap())
                 .collect::<Vec<_>>();
             let v = &v[1..v.len()];
             let args = v.iter().map(|x| match x {
@@ -297,10 +298,16 @@ pub fn stdlib() -> HashMap<String, LType> {
                 _ => None,
             });
             if args.clone().filter(|x| x.is_none()).count() > 0 {
-                return LType::Nil;
+                return Ok(LType::Nil);
             }
             let result = args.map(|x| x.unwrap()).reduce(|acc, e| acc / e).unwrap();
-            return LType::Number(result);
+            return Ok(LType::Number(result));
+        })),
+    );
+    stdlib.insert(
+        "comment".to_string(),
+        LType::Fun(Fun::Native(|_, _| {
+            return Ok(LType::Nil);
         })),
     );
     stdlib.insert(
@@ -308,9 +315,84 @@ pub fn stdlib() -> HashMap<String, LType> {
         LType::Fun(Fun::Native(|v, s| {
             let v = v
                 .iter()
-                .map(|x| eval_args(x.clone(), s))
+                .map(|x| eval_args(x.clone(), s).unwrap())
                 .collect::<Vec<_>>();
-            return v.last().unwrap().clone();
+            return Ok(v.last().unwrap().clone());
+        })),
+    );
+    stdlib.insert(
+        "loop".to_string(),
+        LType::Fun(Fun::Native(|v, s| {
+            let loop_binding = v[1].clone();
+            let loop_binding = if let LType::Token(Token::Vector(x)) = loop_binding {
+                x
+            } else {
+                panic!("Expected loop binding to be Token::Vector");
+            };
+            assert!(loop_binding.len() % 2 == 0);
+            let mut s = s.clone();
+
+            let loop_binding = loop_binding.iter().clone().enumerate();
+
+            let even = loop_binding
+                .clone()
+                .filter(|(i, _)| i % 2 == 0)
+                .map(|(_, x)| x);
+
+            let args = even.clone().map(|x| match x {
+                Token::Symbol(x) => x,
+                _ => panic!("expected loop binding name to be symbol"),
+            });
+
+            let odd = loop_binding.filter(|(i, _)| i % 2 == 1).map(|(_, x)| x);
+            let combined = even.zip(odd);
+            combined.for_each(|(symbol, tk)| {
+                let symbol = match symbol {
+                    Token::Symbol(x) => x,
+                    _ => panic!("expected loop binding name to be symbol"),
+                };
+                let tk = eval_args(LType::Token(tk.clone()), &mut s).unwrap();
+                s.insert(symbol.clone(), tk);
+            });
+            loop {
+                let mut has_recur = false;
+                let mut new_recur: Vec<Token> = Vec::new();
+                let v = &v[2..v.len()]
+                    .iter()
+                    .map(|x| eval_args(x.clone(), &mut s))
+                    .map(|x| match x {
+                        Ok(_) => x,
+                        Err(ref e) => match e {
+                            EvaluationError::SymbolNotRecognized(s, origin) => {
+                                if s == "recur" {
+                                    has_recur = true;
+                                    new_recur = match origin {
+                                        Token::Vector(x) => x.clone(),
+                                        _ => panic!("impossible"),
+                                    }
+                                }
+                                Ok(LType::Nil)
+                            }
+                            _ => x,
+                        },
+                    })
+                    .map(|x| x.unwrap())
+                    .collect::<Vec<_>>();
+                if has_recur {
+                    let args = args.clone();
+
+                    let v = new_recur[1..new_recur.len()]
+                        .iter()
+                        .map(|x| eval_args(LType::Token(x.clone()), &mut s).unwrap())
+                        .collect::<Vec<_>>();
+
+                    args.zip(v).for_each(|(n, lt)| {
+                        s.insert(n.clone(), lt);
+                    });
+                    continue;
+                }
+                return Ok(v.last().unwrap().clone());
+            }
         })),
     );
     stdlib.insert(
@@ -320,7 +402,7 @@ pub fn stdlib() -> HashMap<String, LType> {
             //     .iter()
             //     .map(|x| eval_args(x.clone(), s))
             //     .collect::<Vec<_>>();
-            let cond = eval_args(v[1].clone(), s);
+            let cond = eval_args(v[1].clone(), s).unwrap();
             let cond = match cond {
                 LType::Number(x) => Some(x),
                 LType::String(x) => x.parse::<f64>().map(|x| Some(x)).unwrap_or(None),
@@ -355,7 +437,7 @@ pub fn stdlib() -> HashMap<String, LType> {
                 })
                 .collect::<Vec<_>>();
             v.insert(1, Token::Symbol("anonymous function".to_string()));
-            return LType::Fun(Fun::Lisp(Token::Vector(v)));
+            return Ok(LType::Fun(Fun::Lisp(Token::Vector(v))));
         })),
     );
     stdlib.insert(
@@ -374,7 +456,7 @@ pub fn stdlib() -> HashMap<String, LType> {
                 _ => panic!("function name must be a string"),
             };
             s.insert(fname.to_string(), LType::Fun(Fun::Lisp(Token::Vector(v))));
-            return LType::Nil;
+            return Ok(LType::Nil);
         })),
     );
     stdlib.insert(
@@ -387,7 +469,7 @@ pub fn stdlib() -> HashMap<String, LType> {
             };
             let v = v.clone()[2..v.len()]
                 .iter()
-                .map(|x| eval_args(x.clone(), s))
+                .map(|x| eval_args(x.clone(), s).unwrap())
                 .map(|x| match x {
                     LType::String(x) => x,
                     LType::Number(x) => x.to_string(),
@@ -408,18 +490,31 @@ pub fn stdlib() -> HashMap<String, LType> {
                 Err(x) => x.to_string(),
             };
 
-            return LType::String(out);
+            return Ok(LType::String(out));
         })),
     );
-    eval_ast(
+    let _ = eval_ast(
         &tokenizer(
             "
 (defn - (a b) (+ a (* b -1)))
 ",
         ),
         &mut stdlib,
-    );
+    )
+    .unwrap();
     return stdlib;
+}
+
+#[derive(Error, Debug)]
+pub enum EvaluationError {
+    #[error("Symbol not recognized {0}")]
+    SymbolNotRecognized(String, Token),
+    #[error("Expected type to be: {expected}, actual was {:?}", actual)]
+    TypeError {
+        expected: String,
+        actual: LType,
+        origin: Token,
+    },
 }
 
 /// # Evaluate ast
@@ -428,21 +523,40 @@ pub fn stdlib() -> HashMap<String, LType> {
 /// You cannot evaluate a symbol
 ///
 /// get `symbols` from `dlisp::stdlib()`
-pub fn eval_ast(root: &Token, symbols: &mut HashMap<String, LType>) -> LType {
+pub fn eval_ast(
+    root: &Token,
+    symbols: &mut HashMap<String, LType>,
+) -> Result<LType, EvaluationError> {
     let tks = match root {
         Token::Vector(tks) => tks,
-        _ => panic!("process ast expects root to be vector"),
+        Token::Symbol(_) => {
+            return Err(EvaluationError::TypeError {
+                expected: "Token::Vector".to_string(),
+                actual: LType::Token(root.clone()),
+                origin: root.clone(),
+            });
+        } // _ => panic!("process ast expects root to be vector"),
     };
 
-    let f = match tks.first().unwrap() {
-        Token::Symbol(first_token) => match symbols
-            .get(first_token)
-            .expect(&format!("{} is not a recognized function", first_token))
+    let f = match tks.first().map_or(
+        Err(EvaluationError::TypeError {
+            expected: "Function".to_string(),
+            actual: LType::Nil,
+            origin: root.clone(),
+        }),
+        |x| Ok(x),
+    )? {
+        Token::Symbol(first_token) => match match symbols
+            .get(first_token) {
+                Some(x) => x,
+                None => return Err(EvaluationError::SymbolNotRecognized(first_token.clone(), root.clone())),
+            }
+            // .expect(&format!("{} is not a recognized function", first_token))
         {
             LType::Fun(x) => x.clone(),
             _ => panic!("Not a function {:?}", first_token),
         },
-        Token::Vector(tks) => match eval_ast(&Token::Vector(tks.to_vec()), symbols) {
+        Token::Vector(tks) => match eval_ast(&Token::Vector(tks.to_vec()), symbols)? {
             LType::Fun(x) => x,
             _ => panic!("Not a function {:?}", tks),
         },
@@ -458,7 +572,7 @@ pub fn eval_ast(root: &Token, symbols: &mut HashMap<String, LType>) -> LType {
         match tk {
             Token::Vector(_) => {
                 if !supress_evaluation {
-                    args.push(eval_ast(&tk, symbols))
+                    args.push(eval_ast(&tk, symbols)?)
                 } else {
                     args.push(LType::Token(tk.clone()))
                 }
@@ -497,9 +611,14 @@ pub fn eval_ast(root: &Token, symbols: &mut HashMap<String, LType>) -> LType {
             .for_each(|(s, e)| {
                 new_symbols.insert(s.clone(), e.clone());
             });
-            let root = &root[3];
-            // println!("{:?}", root);
-            return eval_ast(root, &mut new_symbols);
+            let mut fn_body = Vec::new();
+            fn_body.push(Token::Symbol("do".to_string()));
+
+            root[3..root.len()]
+                .iter()
+                .for_each(|x| fn_body.push(x.clone()));
+
+            return eval_ast(&Token::Vector(fn_body), &mut new_symbols);
         }
     };
 
