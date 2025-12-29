@@ -518,6 +518,22 @@ pub enum EvaluationError {
         actual: LType,
         origin: Token,
     },
+    #[error(
+        "Wrong arity given to function `{function}`,
+expected args to be {:?} ({:?}), was given {:?} ({:?})",
+        expected_args,
+        match expected_args {
+            Token::Vector(x) => x.len().to_string(),
+            _ => "Error".to_string()
+        },
+        given_args,
+        given_args.len()
+    )]
+    WrongArity {
+        function: String,
+        expected_args: Token,
+        given_args: Vec<LType>,
+    },
 }
 
 /// # Evaluate ast
@@ -603,15 +619,29 @@ pub fn eval_ast(
                 _ => panic!("unexpected"),
             };
             let mut new_symbols = symbols.clone();
-            match &root[2] {
+            let arglist = match &root[2] {
                 Token::Vector(x) => x.iter().map(|x| match x {
                     Token::Symbol(x) => x,
                     _ => panic!("unexpected vector in arglist"),
                 }),
                 _ => panic!("unexpected symbol instead of arglist"),
+            };
+
+            if arglist.clone().len() != (args.len() - 1) {
+                let fname = root[1].clone();
+                let fname = match fname {
+                    Token::Symbol(x) => x,
+                    _ => panic!("impossible"),
+                };
+                let args = args[1..args.len()].to_vec();
+                return Err(EvaluationError::WrongArity {
+                    function: fname,
+                    expected_args: root[2].clone(),
+                    given_args: args,
+                });
             }
-            .zip(&args[1..args.len()])
-            .for_each(|(s, e)| {
+
+            arglist.zip(&args[1..args.len()]).for_each(|(s, e)| {
                 new_symbols.insert(s.clone(), e.clone());
             });
             let mut fn_body = Vec::new();
