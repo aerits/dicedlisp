@@ -27,3 +27,7 @@ Check `examples/fib.rs` to run this example
 Loop example with shell command
 
 Check `examples/shell.rs` to run this example
+
+Unlike clojure, regular `defn`'s aren't wrapped in `loop`, you have to add a `loop` manually to use `recur`. `recur` can also go anywhere in a loop as long as there is only one `recur`.
+
+The only way to define variables is locally with `loop` or `defn` parameters. You can set a constant by making a constant function. `(defn a () "a")`
