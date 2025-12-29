@@ -377,6 +377,40 @@ pub fn stdlib() -> HashMap<String, LType> {
             return LType::Nil;
         })),
     );
+    stdlib.insert(
+        "sh ".to_string(),
+        LType::Fun(Fun::Native(|v, s| {
+            assert!(v.len() >= 2);
+            let command_name = match &v[1] {
+                LType::String(x) => x.clone(),
+                _ => panic!("expected shell command to be string"),
+            };
+            let v = v.clone()[2..v.len()]
+                .iter()
+                .map(|x| eval_args(x.clone(), s))
+                .map(|x| match x {
+                    LType::String(x) => x,
+                    LType::Number(x) => x.to_string(),
+                    _ => panic!("expected shell command args to be string"),
+                })
+                .collect::<Vec<_>>();
+            let out = std::process::Command::new(&command_name)
+                .args(v)
+                .spawn()
+                .expect(&format!("failed to run {:?}", command_name))
+                .wait_with_output()
+                .map(|x| match String::from_utf8(x.stdout) {
+                    Ok(x) => x,
+                    Err(x) => x.to_string(),
+                });
+            let out = match out {
+                Ok(x) => x,
+                Err(x) => x.to_string(),
+            };
+
+            return LType::String(out);
+        })),
+    );
     eval_ast(
         &tokenizer(
             "
