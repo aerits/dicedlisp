@@ -11,3 +11,4 @@ very inefficient
     (if (= n 2) 1
       (+ (fib (- n 1)) (fib (- n 2))))))
 ```
+Check `examples/fib.rs` to run this example
