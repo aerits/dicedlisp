@@ -23,5 +23,8 @@ fn main() {
        (recur (+ i 1))))
 ",
     );
-    println!("{:?}", dlisp::eval_ast(&tokens, &mut dlisp::stdlib()));
+    println!(
+        "{:?}",
+        dlisp::eval_ast(&tokens, &mut dlisp::stdlib::stdlib())
+    );
 }

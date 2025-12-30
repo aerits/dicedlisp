@@ -17,6 +17,6 @@ fn main() {
          (recur (+ i 1) fun))))
 ",
     );
-    let mut heap = dlisp::stdlib();
+    let mut heap = dlisp::stdlib::stdlib();
     println!("{:?}", dlisp::eval_ast(&_tokens, &mut heap));
 }
